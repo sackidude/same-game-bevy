@@ -57,6 +57,7 @@ fn setup(
     commands.spawn((
         TextBundle::from_sections([
             TextSection::new("Score: ", TextStyle::default()),
+            // NOTE: IDK if this should be split.
             TextSection::new("0", TextStyle::default()),
         ]),
         ScoreText,
