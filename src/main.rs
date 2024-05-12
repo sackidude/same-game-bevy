@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use rand::Rng;
 
 fn main() {
     App::new()
@@ -22,10 +23,15 @@ struct Player {
     position: Vec3,
 }
 
+#[derive(Default)]
+struct Falling {
+    mesh_handle: Handle<Mesh>,
+}
+
 #[derive(Resource, Default)]
 struct Game {
     score: u32,
-    falling_handle: Handle<Mesh>,
+    falling: Falling,
     player: Player,
 }
 
@@ -36,7 +42,7 @@ struct ScoreText;
 struct PlayerComponent;
 
 #[derive(Component)]
-struct Falling;
+struct FallingComponent;
 
 #[derive(Resource)]
 struct FallingTimer(Timer);
@@ -93,7 +99,7 @@ fn setup(
     });
 
     // Falling object
-    game.falling_handle = meshes.add(Sphere::new(0.25));
+    game.falling.mesh_handle = meshes.add(Sphere::new(0.25));
 }
 
 fn update_score(game: Res<Game>, mut query: Query<&mut Text, With<ScoreText>>) {
@@ -131,18 +137,18 @@ fn spawn_falling(
     if !timer.0.tick(time.delta()).finished() {
         return;
     }
-
+    let x = rand::thread_rng().gen_range(-5.0..5.0);
     commands.spawn((
         PbrBundle {
-            mesh: game.falling_handle.clone(),
-            transform: Transform::from_xyz(0.0, 5., 0.),
+            mesh: game.falling.mesh_handle.clone(),
+            transform: Transform::from_xyz(x, 5., 0.),
             ..default()
         },
-        Falling,
+        FallingComponent,
     ));
 }
 
-fn move_falling(mut query: Query<&mut Transform, With<Falling>>) {
+fn move_falling(mut query: Query<&mut Transform, With<FallingComponent>>) {
     for mut tranform in query.iter_mut() {
         // Move
         tranform.translation.y -= FALLING_SPEED;
@@ -152,7 +158,7 @@ fn move_falling(mut query: Query<&mut Transform, With<Falling>>) {
 fn collision_falling(
     mut game: ResMut<Game>,
     mut commands: Commands,
-    query: Query<(&mut Transform, Entity), With<Falling>>,
+    query: Query<(&mut Transform, Entity), With<FallingComponent>>,
 ) {
     for (transform, entity) in query.iter() {
         // Check for collision with player
@@ -161,6 +167,13 @@ fn collision_falling(
         {
             game.score += 1;
 
+            commands.entity(entity).despawn();
+            continue;
+        }
+
+        // Check if "collide" with ground
+        if transform.translation.y < -1. {
+            game.score = 0;
             commands.entity(entity).despawn();
         }
     }
