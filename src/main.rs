@@ -17,6 +17,7 @@ fn main() {
 
 const FALLING_SPEED: f32 = 0.05;
 const PICKUP_DISTANCE: f32 = 1.;
+const PLAYER_SPEED: f32 = 0.05;
 
 #[derive(Default)]
 struct Player {
@@ -121,7 +122,6 @@ fn move_player(
     if keyboard_input.pressed(KeyCode::ArrowRight) {
         direction += 1.;
     }
-    const PLAYER_SPEED: f32 = 0.05;
     transform.translation.x += direction * PLAYER_SPEED;
 
     game.player.position = transform.translation;
