@@ -7,21 +7,33 @@ fn main() {
         .insert_resource(FallingTimer(Timer::from_seconds(1., TimerMode::Repeating)))
         .add_systems(Startup, setup)
         .add_systems(Update, update_score)
-        .add_systems(FixedUpdate, (move_player, spawn_falling, update_falling))
+        .add_systems(
+            FixedUpdate,
+            (move_player, spawn_falling, move_falling, collision_falling),
+        )
         .run();
+}
+
+const FALLING_SPEED: f32 = 0.05;
+const PICKUP_DISTANCE: f32 = 1.;
+
+#[derive(Default)]
+struct Player {
+    position: Vec3,
 }
 
 #[derive(Resource, Default)]
 struct Game {
     score: u32,
     falling_handle: Handle<Mesh>,
+    player: Player,
 }
 
 #[derive(Component)]
 struct ScoreText;
 
 #[derive(Component)]
-struct Player;
+struct PlayerComponent;
 
 #[derive(Component)]
 struct Falling;
@@ -58,7 +70,7 @@ fn setup(
             transform: Transform::from_xyz(0.0, 0.0, 0.0),
             ..default()
         },
-        Player,
+        PlayerComponent,
     ));
 
     // Light
@@ -89,8 +101,9 @@ fn update_score(game: Res<Game>, mut query: Query<&mut Text, With<ScoreText>>) {
 }
 
 fn move_player(
+    mut game: ResMut<Game>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
-    mut query: Query<&mut Transform, With<Player>>,
+    mut query: Query<&mut Transform, With<PlayerComponent>>,
 ) {
     let mut transform = query.single_mut();
     let mut direction = 0.;
@@ -103,6 +116,8 @@ fn move_player(
     }
     const PLAYER_SPEED: f32 = 0.05;
     transform.translation.x += direction * PLAYER_SPEED;
+
+    game.player.position = transform.translation;
 }
 
 fn spawn_falling(
@@ -126,9 +141,26 @@ fn spawn_falling(
     ));
 }
 
-fn update_falling(mut query: Query<&mut Transform, With<Falling>>) {
+fn move_falling(mut query: Query<&mut Transform, With<Falling>>) {
     for mut tranform in query.iter_mut() {
-        const FALLING_SPEED: f32 = 0.05;
+        // Move
         tranform.translation.y -= FALLING_SPEED;
+    }
+}
+
+fn collision_falling(
+    mut game: ResMut<Game>,
+    mut commands: Commands,
+    query: Query<(&mut Transform, Entity), With<Falling>>,
+) {
+    for (transform, entity) in query.iter() {
+        // Check for collision with player
+        if transform.translation.distance_squared(game.player.position)
+            < PICKUP_DISTANCE * PICKUP_DISTANCE
+        {
+            game.score += 1;
+
+            commands.entity(entity).despawn();
+        }
     }
 }
